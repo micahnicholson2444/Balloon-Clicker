@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Balloon Clicker</title>
+<style>
+  :root {
+    --sky-top: #4fb6ff;
+    --sky-bottom: #bfe9ff;
+  }
+
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Segoe UI', Tahoma, Verdana, sans-serif;
+    touch-action: manipulation;
+  }
+
+  body {
+    position: relative;
+    background: linear-gradient(to bottom, var(--sky-top) 0%, var(--sky-bottom) 75%, #e8fbe0 100%);
+  }
+
+  /* Sun */
+  .sun {
+    position: absolute;
+    top: 8%;
+    right: 12%;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff9c4, #ffd93b 55%, #ffb703 100%);
+    box-shadow: 0 0 60px 25px rgba(255, 217, 59, 0.55);
+    animation: sunPulse 6s ease-in-out infinite;
+  }
+
+  @keyframes sunPulse {
+    0%, 100% { box-shadow: 0 0 60px 25px rgba(255, 217, 59, 0.55); }
+    50%      { box-shadow: 0 0 75px 35px rgba(255, 217, 59, 0.7); }
+  }
+
+  /* Clouds (simple, decorative, no lag - pure CSS transform loops) */
+  .cloud {
+    position: absolute;
+    background: #fff;
+    border-radius: 50px;
+    opacity: 0.9;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.05));
+    will-change: transform;
+  }
+  .cloud::before, .cloud::after {
+    content: "";
+    position: absolute;
+    background: #fff;
+    border-radius: 50%;
+  }
+  .cloud1 { width: 100px; height: 36px; top: 15%; left: -150px; animation: drift 32s linear infinite; }
+  .cloud1::before { width: 50px; height: 50px; top: -22px; left: 12px; }
+  .cloud1::after  { width: 40px; height: 40px; top: -16px; left: 50px; }
+
+  .cloud2 { width: 140px; height: 44px; top: 30%; left: -200px; animation: drift 46s linear infinite; animation-delay: -10s; }
+  .cloud2::before { width: 60px; height: 60px; top: -26px; left: 20px; }
+  .cloud2::after  { width: 50px; height: 50px; top: -18px; left: 70px; }
+
+  .cloud3 { width: 80px; height: 30px; top: 55%; left: -120px; animation: drift 38s linear infinite; animation-delay: -22s; }
+  .cloud3::before { width: 40px; height: 40px; top: -18px; left: 10px; }
+  .cloud3::after  { width: 32px; height: 32px; top: -12px; left: 40px; }
+
+  @keyframes drift {
+    from { transform: translateX(0); }
+    to   { transform: translateX(calc(100vw + 250px)); }
+  }
+
+  /* Ground hint */
+  .ground {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 12%;
+    background: linear-gradient(to bottom, #cdf5b8, #a3e07f);
+  }
+
+  /* HUD */
+  .hud {
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.25);
+    letter-spacing: 1px;
+    margin: 0 0 6px 0;
+  }
+
+  .score {
+    font-size: 2.4rem;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 0 3px 6px rgba(0,0,0,0.3);
+  }
+
+  .score span {
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: block;
+    opacity: 0.9;
+    margin-top: -4px;
+  }
+
+  /* Click area / main balloon */
+  .click-zone {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #mainBalloon {
+    width: 180px;
+    height: auto;
+    cursor: pointer;
+    filter: drop-shadow(0 10px 12px rgba(0,0,0,0.25));
+    transition: transform 0.08s ease-out;
+    touch-action: manipulation;
+  }
+
+  #mainBalloon:active,
+  .pressed {
+    transform: scale(0.9) !important;
+  }
+
+  .idle-bob {
+    animation: bob 2.6s ease-in-out infinite;
+  }
+
+  @keyframes bob {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50%      { transform: translateY(-10px) rotate(-2deg); }
+  }
+
+  /* Floating "+1" popups */
+  .pop {
+    position: absolute;
+    font-weight: 800;
+    font-size: 1.4rem;
+    color: #ffffff;
+    text-shadow: 0 2px 3px rgba(0,0,0,0.3);
+    pointer-events: none;
+    z-index: 15;
+    animation: popFloat 0.9s ease-out forwards;
+    will-change: transform, opacity;
+  }
+
+  @keyframes popFloat {
+    0%   { transform: translateY(0) scale(0.8); opacity: 1; }
+    100% { transform: translateY(-70px) scale(1.1); opacity: 0; }
+  }
+
+  /* Flying background balloons */
+  .fly-balloon {
+    position: absolute;
+    bottom: -60px;
+    width: 40px;
+    height: auto;
+    pointer-events: none;
+    opacity: 0.95;
+    z-index: 5;
+    will-change: transform, opacity;
+    animation-name: floatUp;
+    animation-timing-function: ease-in;
+    animation-fill-mode: forwards;
+  }
+
+  @keyframes floatUp {
+    0% {
+      transform: translate(0, 0) rotate(0deg);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(var(--drift), -115vh) rotate(var(--rot));
+      opacity: 0;
+    }
+  }
+
+  .footer-note {
+    position: absolute;
+    bottom: 6px;
+    width: 100%;
+    text-align: center;
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.85);
+    z-index: 10;
+  }
+</style>
+</head>
+<body>
+
+  <div class="sun"></div>
+  <div class="cloud cloud1"></div>
+  <div class="cloud cloud2"></div>
+  <div class="cloud cloud3"></div>
+  <div class="ground"></div>
+
+  <div class="hud">
+    <p class="title">🎈 Balloon Clicker</p>
+    <div class="score" id="scoreDisplay">0<span>balloons</span></div>
+  </div>
+
+  <div class="click-zone">
+    <svg id="mainBalloon" class="idle-bob" viewBox="0 0 100 140" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="50" cy="55" rx="38" ry="46" fill="#ff4d6d"/>
+      <ellipse cx="35" cy="35" rx="12" ry="16" fill="#ffffff" opacity="0.3"/>
+      <path d="M50 101 L46 112 L54 112 Z" fill="#ff4d6d"/>
+      <line x1="50" y1="112" x2="50" y2="140" stroke="#8a8a8a" stroke-width="2"/>
+    </svg>
+  </div>
+
+  <div class="footer-note">Click / tap the balloon!</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var scoreEl = document.getElementById("scoreDisplay");
+  var balloonEl = document.getElementById("mainBalloon");
+  var clickZone = document.querySelector(".click-zone");
+  var body = document.body;
+
+  // ---- Load saved score ----
+  var STORAGE_KEY = "balloonClickerScore";
+  var score = 0;
+  try {
+    var saved = localStorage.getItem(STORAGE_KEY);
+    if (saved !== null) score = parseInt(saved, 10) || 0;
+  } catch (e) {
+    /* localStorage unavailable, ignore */
+  }
+  updateScoreDisplay();
+
+  function updateScoreDisplay() {
+    scoreEl.innerHTML = score + "<span>balloon" + (score === 1 ? "" : "s") + "</span>";
+  }
+
+  function saveScore() {
+    try {
+      localStorage.setItem(STORAGE_KEY, String(score));
+    } catch (e) { /* ignore */ }
+  }
+
+  // Debounced save so rapid clicking doesn't hammer localStorage
+  var saveTimeout = null;
+  function scheduleSave() {
+    if (saveTimeout) return;
+    saveTimeout = setTimeout(function () {
+      saveScore();
+      saveTimeout = null;
+    }, 400);
+  }
+
+  // ---- Performance cap on simultaneous flying balloons ----
+  var MAX_FLYING = 25;
+  var flyingCount = 0;
+
+  var balloonColors = ["#ff4d6d", "#ffb703", "#4cc9f0", "#8ac926", "#b388eb", "#ff8fab"];
+
+  function spawnFlyingBalloon(originX, originY) {
+    if (flyingCount >= MAX_FLYING) return;
+    flyingCount++;
+
+    var el = document.createElementNS(null, "svg"); // placeholder, replaced below
+    el = document.createElement("div");
+    el.className = "fly-balloon";
+
+    var color = balloonColors[Math.floor(Math.random() * balloonColors.length)];
+    el.innerHTML =
+      '<svg viewBox="0 0 100 140" xmlns="http://www.w3.org/2000/svg">' +
+      '<ellipse cx="50" cy="55" rx="38" ry="46" fill="' + color + '"/>' +
+      '<ellipse cx="35" cy="35" rx="12" ry="16" fill="#ffffff" opacity="0.3"/>' +
+      '<path d="M50 101 L46 112 L54 112 Z" fill="' + color + '"/>' +
+      '<line x1="50" y1="112" x2="50" y2="140" stroke="#8a8a8a" stroke-width="2"/>' +
+      '</svg>';
+
+    var drift = (Math.random() * 160 - 80).toFixed(0) + "px";
+    var rot = (Math.random() * 40 - 20).toFixed(0) + "deg";
+    var duration = (3.2 + Math.random() * 1.6).toFixed(2) + "s";
+
+    el.style.left = originX + "px";
+    el.style.setProperty("--drift", drift);
+    el.style.setProperty("--rot", rot);
+    el.style.animationDuration = duration;
+
+    el.addEventListener("animationend", function () {
+      el.remove();
+      flyingCount--;
+    });
+
+    body.appendChild(el);
+  }
+
+  function spawnPop(originX, originY) {
+    var pop = document.createElement("div");
+    pop.className = "pop";
+    pop.textContent = "+1";
+    pop.style.left = (originX - 10) + "px";
+    pop.style.top = originY + "px";
+    pop.addEventListener("animationend", function () {
+      pop.remove();
+    });
+    body.appendChild(pop);
+  }
+
+  function handleClick(clientX, clientY) {
+    score++;
+    updateScoreDisplay();
+    scheduleSave();
+
+    // Press animation
+    balloonEl.classList.remove("idle-bob");
+    balloonEl.classList.add("pressed");
+    setTimeout(function () {
+      balloonEl.classList.remove("pressed");
+      balloonEl.classList.add("idle-bob");
+    }, 100);
+
+    var originX = clientX !== undefined ? clientX : window.innerWidth / 2;
+    var originY = clientY !== undefined ? clientY : window.innerHeight / 2;
+
+    spawnFlyingBalloon(originX, originY);
+    spawnPop(originX, originY);
+  }
+
+  // Use a single pointerdown listener (works for mouse, touch, pen) — avoids double
+  // firing that click + touchstart together can cause on mobile.
+  balloonEl.addEventListener("pointerdown", function (e) {
+    e.preventDefault();
+    handleClick(e.clientX, e.clientY);
+  }, { passive: false });
+
+  // Fallback for very old browsers without Pointer Events
+  if (!window.PointerEvent) {
+    balloonEl.addEventListener("click", function (e) {
+      handleClick(e.clientX, e.clientY);
+    });
+  }
+
+})();
+</script>
+
+</body>
+</html>
